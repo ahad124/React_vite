@@ -19,6 +19,9 @@ const AdminDashboard = () => {
   const [eventDate, setEventDate] = useState('');
   const [eventLocation, setEventLocation] = useState('');
   const [eventCategoryId, setEventCategoryId] = useState('');
+  const [eventImageUrl, setEventImageUrl] = useState(''); // existing/uploaded image URL
+  const [eventImageFile, setEventImageFile] = useState(null); // newly selected file
+  const [imageUploading, setImageUploading] = useState(false);
 
   // Form states for creating category
   const [categoryName, setCategoryName] = useState('');
@@ -74,11 +77,25 @@ const AdminDashboard = () => {
     setSuccess('');
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
     try {
+      // If a new image file was selected, upload it first and use the returned URL.
+      let imageUrl = eventImageUrl;
+      if (eventImageFile) {
+        setImageUploading(true);
+        const formData = new FormData();
+        formData.append('file', eventImageFile);
+        const uploadRes = await axios.post(`${baseUrl}/events/upload-image`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        imageUrl = uploadRes.data.imageUrl;
+        setImageUploading(false);
+      }
+
       const payload = {
         title: eventTitle,
         description: eventDesc,
         date: eventDate,
         location: eventLocation,
+        imageUrl: imageUrl || null,
         categoryId: parseInt(eventCategoryId),
         organizerId: user.id
       };
@@ -96,7 +113,8 @@ const AdminDashboard = () => {
       fetchData();
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Failed to save event.');
+      setImageUploading(false);
+      setError(err.response?.data?.message || err.response?.data || 'Failed to save event.');
     }
   };
 
@@ -108,6 +126,8 @@ const AdminDashboard = () => {
     setEventDate('');
     setEventLocation('');
     setEventCategoryId('');
+    setEventImageUrl('');
+    setEventImageFile(null);
   };
 
   const handleEditEvent = (evt) => {
@@ -119,6 +139,8 @@ const AdminDashboard = () => {
     setEventDate(formattedDate);
     setEventLocation(evt.location || '');
     setEventCategoryId(evt.categoryId);
+    setEventImageUrl(evt.imageUrl || '');
+    setEventImageFile(null);
     setShowEventForm(true);
   };
 
@@ -283,13 +305,33 @@ const AdminDashboard = () => {
                           <label className="form-label text-muted small">Description</label>
                           <textarea className="form-control rounded-3" rows="3" value={eventDesc} onChange={(e)=>setEventDesc(e.target.value)} required></textarea>
                         </div>
+                        <div className="col-12">
+                          <label className="form-label text-muted small">Event Image</label>
+                          <div className="d-flex align-items-center gap-3">
+                            {(eventImageFile || eventImageUrl) && (
+                              <img
+                                src={eventImageFile ? URL.createObjectURL(eventImageFile) : eventImageUrl}
+                                alt="Event preview"
+                                className="rounded-3"
+                                style={{ width: 72, height: 72, objectFit: 'cover' }}
+                              />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/png, image/jpeg, image/gif, image/webp"
+                              className="form-control rounded-3"
+                              onChange={(e) => setEventImageFile(e.target.files?.[0] || null)}
+                            />
+                          </div>
+                          <small className="text-muted">PNG, JPG, GIF or WEBP · max 5&nbsp;MB{editingEventId && eventImageUrl && !eventImageFile ? ' · leave empty to keep current image' : ''}</small>
+                        </div>
                       </div>
                       <div className="d-flex justify-content-end gap-2 mt-4">
                         <button type="button" onClick={resetEventForm} className="btn btn-outline-secondary rounded-pill px-4 btn-sm">
                           Cancel
                         </button>
-                        <button type="submit" className="btn btn-primary rounded-pill px-4 btn-sm">
-                          {editingEventId ? 'Save Changes' : 'Create Event'}
+                        <button type="submit" className="btn btn-primary rounded-pill px-4 btn-sm" disabled={imageUploading}>
+                          {imageUploading ? 'Uploading…' : (editingEventId ? 'Save Changes' : 'Create Event')}
                         </button>
                       </div>
                     </form>

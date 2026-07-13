@@ -21,6 +21,10 @@ public class Event
     [StringLength(300)]
     public string? Location { get; set; }
 
+    // Relative URL of the uploaded event image, e.g. "/uploads/{guid}.jpg"
+    [StringLength(400)]
+    public string? ImageUrl { get; set; }
+
     [Required(ErrorMessage = "CategoryId is required")]
     public int CategoryId { get; set; }
 

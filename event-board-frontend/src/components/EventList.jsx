@@ -151,7 +151,16 @@ const EventList = () => {
         <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
           {events.map((event) => (
             <div className="col" key={event.id}>
-              <div className="card h-100 shadow-sm event-card border-0">
+              <div className="card h-100 shadow-sm event-card border-0 overflow-hidden">
+                {event.imageUrl && (
+                  <img
+                    src={event.imageUrl}
+                    alt={event.title}
+                    className="card-img-top"
+                    style={{ height: 160, objectFit: 'cover' }}
+                    loading="lazy"
+                  />
+                )}
                 <div className="card-body d-flex flex-column p-4">
                   <div className="d-flex justify-content-between align-items-center mb-3">
                     <span className="badge rounded-pill bg-primary-soft text-primary px-3 py-2 fw-semibold">

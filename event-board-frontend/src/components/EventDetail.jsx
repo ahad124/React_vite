@@ -14,6 +14,10 @@ const EventDetail = () => {
   const [isFavorited, setIsFavorited] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Weather state
+  const [weather, setWeather] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
@@ -55,8 +59,24 @@ const EventDetail = () => {
     }
   };
 
+  const fetchWeather = async () => {
+    try {
+      setWeatherLoading(true);
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+      const res = await axios.get(`${baseUrl}/weather/event/${id}`);
+      // Backend always returns a WeatherDto; `available: false` means show the fallback.
+      setWeather(res.data?.available ? res.data : null);
+    } catch (err) {
+      console.error('Error fetching weather:', err);
+      setWeather(null);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchEventDetail();
+    fetchWeather();
   }, [id]);
 
   useEffect(() => {
@@ -140,6 +160,14 @@ const EventDetail = () => {
       </div>
 
       <div className="card shadow-lg border-0 overflow-hidden detail-card">
+        {event.imageUrl && (
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-100"
+            style={{ maxHeight: 340, objectFit: 'cover' }}
+          />
+        )}
         {/* Banner area with a gradient */}
         <div className="bg-gradient-primary-dark text-white p-5 position-relative">
           <div className="position-relative z-1">
@@ -233,6 +261,42 @@ const EventDetail = () => {
                     </div>
                   </li>
                 </ul>
+
+                {/* Weather block */}
+                <div className="mb-4">
+                  <small className="text-muted d-block mb-2 fw-semibold text-uppercase" style={{ letterSpacing: '.05em', fontSize: '.7rem' }}>
+                    Current Weather
+                  </small>
+                  {weatherLoading ? (
+                    <div className="d-flex align-items-center gap-2 text-muted small">
+                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                      Loading weather…
+                    </div>
+                  ) : weather ? (
+                    <div className="d-flex align-items-center gap-3 p-3 rounded-3 bg-primary-soft">
+                      {weather.icon && (
+                        <img
+                          src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`}
+                          alt={weather.description}
+                          width="56"
+                          height="56"
+                        />
+                      )}
+                      <div>
+                        <div className="fw-bold text-dark fs-4">{Math.round(weather.temperatureC)}°C</div>
+                        <div className="text-muted small text-capitalize">{weather.description}</div>
+                        <div className="text-muted small">
+                          {weather.city}
+                          {weather.humidity ? ` · ${weather.humidity}% humidity` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-muted small mb-0 fst-italic">
+                      Weather information is currently unavailable.
+                    </p>
+                  )}
+                </div>
 
                 {/* Booking Action section */}
                 {bookingStatus ? (

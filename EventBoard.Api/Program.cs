@@ -5,6 +5,8 @@ using EventBoard.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Polly;
+using Polly.Extensions.Http;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +26,20 @@ builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 // Add Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+// Weather service: typed HttpClient with a Polly retry policy.
+// Retries transient failures 3 times, waiting 2 seconds between each attempt.
+builder.Services.AddHttpClient<IWeatherService, WeatherService>(client =>
+{
+    var baseUrl = builder.Configuration["OpenWeather:BaseUrl"] ?? "https://api.openweathermap.org";
+    client.BaseAddress = new Uri(baseUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+})
+.AddPolicyHandler(HttpPolicyExtensions
+    .HandleTransientHttpError() // 5xx, 408, and HttpRequestException
+    .WaitAndRetryAsync(
+        retryCount: 3,
+        sleepDurationProvider: _ => TimeSpan.FromSeconds(2)));
 
 // Add JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -73,6 +89,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Serve uploaded event images from wwwroot/uploads
+app.UseStaticFiles();
 
 app.UseCors("AllowFrontend");
 

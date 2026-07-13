@@ -10,11 +10,23 @@ namespace EventBoard.Api.Controllers;
 public class EventsController : ControllerBase
 {
     private readonly IEventRepository _eventRepository;
+    private readonly IWebHostEnvironment _environment;
     private readonly ILogger<EventsController> _logger;
 
-    public EventsController(IEventRepository eventRepository, ILogger<EventsController> logger)
+    // Whitelisted image types for upload. Extension AND content-type must both match.
+    private static readonly HashSet<string> AllowedImageExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+    private static readonly HashSet<string> AllowedImageContentTypes =
+        new(StringComparer.OrdinalIgnoreCase) { "image/jpeg", "image/png", "image/gif", "image/webp" };
+    private const long MaxImageBytes = 5 * 1024 * 1024; // 5 MB
+
+    public EventsController(
+        IEventRepository eventRepository,
+        IWebHostEnvironment environment,
+        ILogger<EventsController> logger)
     {
         _eventRepository = eventRepository;
+        _environment = environment;
         _logger = logger;
     }
 
@@ -92,6 +104,7 @@ public class EventsController : ControllerBase
             Description = request.Description?.Trim(),
             Date = request.Date,
             Location = request.Location?.Trim(),
+            ImageUrl = request.ImageUrl?.Trim(),
             CategoryId = request.CategoryId,
             OrganizerId = request.OrganizerId
         };
@@ -140,6 +153,7 @@ public class EventsController : ControllerBase
         evt.Description = request.Description?.Trim() ?? evt.Description;
         evt.Date = request.Date ?? evt.Date;
         evt.Location = request.Location?.Trim() ?? evt.Location;
+        evt.ImageUrl = request.ImageUrl?.Trim() ?? evt.ImageUrl;
         evt.CategoryId = request.CategoryId ?? evt.CategoryId;
 
         await _eventRepository.UpdateAsync(evt);
@@ -182,6 +196,59 @@ public class EventsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Upload an event image (Admin only). Returns the relative URL to store on the event.
+    /// Validates content-type, extension and size, and writes with a random file name
+    /// to prevent path traversal or overwriting existing files.
+    /// </summary>
+    [HttpPost("upload-image")]
+    [Authorize(Roles = "Admin")]
+    [RequestSizeLimit(MaxImageBytes)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UploadImage(IFormFile? file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest("No file was uploaded.");
+        }
+
+        if (file.Length > MaxImageBytes)
+        {
+            return BadRequest("Image must be 5 MB or smaller.");
+        }
+
+        var extension = Path.GetExtension(file.FileName);
+        if (string.IsNullOrWhiteSpace(extension) || !AllowedImageExtensions.Contains(extension))
+        {
+            return BadRequest("Unsupported file type. Allowed: .jpg, .jpeg, .png, .gif, .webp");
+        }
+
+        if (!AllowedImageContentTypes.Contains(file.ContentType))
+        {
+            return BadRequest("Unsupported content type. Please upload a valid image.");
+        }
+
+        // wwwroot may not exist yet in a fresh checkout; ensure the uploads folder exists.
+        var webRoot = _environment.WebRootPath
+                      ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
+        var uploadsDir = Path.Combine(webRoot, "uploads");
+        Directory.CreateDirectory(uploadsDir);
+
+        // Random, server-generated file name — never trust the client's file name.
+        var safeFileName = $"{Guid.NewGuid():N}{extension.ToLowerInvariant()}";
+        var absolutePath = Path.Combine(uploadsDir, safeFileName);
+
+        await using (var stream = new FileStream(absolutePath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var relativeUrl = $"/uploads/{safeFileName}";
+        _logger.LogInformation("Image uploaded: {ImageUrl}", relativeUrl);
+        return Ok(new { imageUrl = relativeUrl });
+    }
+
     private static EventDto MapToEventDto(Event evt)
     {
         return new EventDto
@@ -191,6 +258,7 @@ public class EventsController : ControllerBase
             Description = evt.Description,
             Date = evt.Date,
             Location = evt.Location,
+            ImageUrl = evt.ImageUrl,
             CategoryId = evt.CategoryId,
             CategoryName = evt.Category?.Name ?? "Unknown Category",
             OrganizerId = evt.OrganizerId,
@@ -208,6 +276,7 @@ public class CreateEventRequest
     public string? Description { get; set; }
     public DateTime Date { get; set; }
     public string? Location { get; set; }
+    public string? ImageUrl { get; set; }
     public int CategoryId { get; set; }
     public Guid OrganizerId { get; set; }
 }
@@ -221,6 +290,7 @@ public class UpdateEventRequest
     public string? Description { get; set; }
     public DateTime? Date { get; set; }
     public string? Location { get; set; }
+    public string? ImageUrl { get; set; }
     public int? CategoryId { get; set; }
 }
 
@@ -234,6 +304,7 @@ public class EventDto
     public string? Description { get; set; }
     public DateTime Date { get; set; }
     public string? Location { get; set; }
+    public string? ImageUrl { get; set; }
     public int CategoryId { get; set; }
     public string CategoryName { get; set; } = string.Empty;
     public Guid OrganizerId { get; set; }
