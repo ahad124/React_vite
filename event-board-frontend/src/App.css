@@ -1,0 +1,164 @@
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+/* Import Bootstrap CSS */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+:root {
+  --primary-color: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: rgba(79, 70, 229, 0.1);
+  --dark-glass: rgba(18, 18, 18, 0.85);
+  --light-gray: #f8fafc;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--light-gray);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Background Utility */
+.bg-light-gray {
+  background-color: var(--light-gray);
+}
+
+/* Glassmorphism Navigation */
+.bg-dark-glass {
+  background: var(--dark-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Nav Link Hover States */
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.75);
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link.active {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.pointer-disabled {
+  cursor: default;
+}
+
+/* Gradients */
+.text-gradient {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-nav {
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Soft Badges */
+.bg-primary-soft {
+  background-color: var(--primary-soft);
+  color: var(--primary-color);
+}
+
+/* Premium Card Design and Animations */
+.event-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.04) !important;
+  background-color: #ffffff;
+}
+
+.event-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Buttons custom hover filled */
+.btn-outline-primary {
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+.btn-outline-primary:hover {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #fff;
+}
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.btn-hover-filled {
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-hover-scale {
+  transition: transform 0.2s ease-in-out;
+}
+.btn-hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Text Clamping Utilities */
+.text-line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Detail Card and Banner Layout */
+.detail-card {
+  border-radius: 16px;
+  background-color: #ffffff;
+}
+
+.bg-gradient-primary-dark {
+  background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.gradient-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(124, 58, 237, 0.15) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* Custom Width for details lists */
+.min-w-100 {
+  min-width: 90px;
+}
+
+.min-vh-50 {
+  min-height: 50vh;
+}
+
+/* Extra premium shadows */
+.shadow-xs {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
