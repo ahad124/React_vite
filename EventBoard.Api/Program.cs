@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Serialization;
 using EventBoard.Api.Data;
 using EventBoard.Api.Repositories;
 using EventBoard.Api.Services;
@@ -11,7 +12,10 @@ using Polly.Extensions.Http;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+// Serialize/accept enums as their string names (e.g. BookingStatus "Confirmed")
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 // Add DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
