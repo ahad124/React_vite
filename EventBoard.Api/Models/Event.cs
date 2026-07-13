@@ -20,7 +20,7 @@ public class Event
 
     [Required(ErrorMessage = "UserId is required")]
     [ForeignKey("User")]
-    public int UserId { get; set; }
+    public Guid UserId { get; set; }
 
     // Navigation property
     [InverseProperty("Events")]

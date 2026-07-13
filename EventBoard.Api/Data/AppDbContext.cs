@@ -16,17 +16,19 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Configure User entity
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(u => u.Id);
+            entity.HasIndex(u => u.Email).IsUnique();
+        });
+
         // Configure the one-to-many relationship between User and Event
         modelBuilder.Entity<Event>()
             .HasOne(e => e.User)
             .WithMany(u => u.Events)
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        // Additional configuration
-        modelBuilder.Entity<User>()
-            .HasIndex(u => u.Email)
-            .IsUnique();
 
         modelBuilder.Entity<Event>()
             .Property(e => e.Date)

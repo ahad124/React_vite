@@ -1,5 +1,6 @@
 using EventBoard.Api.Data;
 using EventBoard.Api.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -69,7 +70,7 @@ public class EventsController : ControllerBase
     /// </summary>
     [HttpGet("user/{userId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<EventDto>>> GetEventsByUserId(int userId)
+    public async Task<ActionResult<IEnumerable<EventDto>>> GetEventsByUserId(Guid userId)
     {
         _logger.LogInformation("Retrieving events for user ID: {UserId}", userId);
 
@@ -83,11 +84,14 @@ public class EventsController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new event
+    /// Create a new event (Admin only)
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventDto>> CreateEvent([FromBody] CreateEventRequest request)
     {
@@ -129,11 +133,14 @@ public class EventsController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing event
+    /// Update an existing event (Admin only)
     /// </summary>
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventDto>> UpdateEvent(int id, [FromBody] UpdateEventRequest request)
     {
@@ -171,11 +178,14 @@ public class EventsController : ControllerBase
     }
 
     /// <summary>
-    /// Delete an event
+    /// Delete an event (Admin only)
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteEvent(int id)
     {
@@ -211,7 +221,7 @@ public class EventsController : ControllerBase
             Description = evt.Description,
             Date = evt.Date,
             UserId = evt.UserId,
-            UserName = evt.User?.Name ?? "Unknown User"
+            UserEmail = evt.User?.Email ?? "Unknown"
         };
     }
 }
@@ -224,7 +234,7 @@ public class CreateEventRequest
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime Date { get; set; }
-    public int UserId { get; set; }
+    public Guid UserId { get; set; }
 }
 
 /// <summary>
@@ -246,6 +256,6 @@ public class EventDto
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime Date { get; set; }
-    public int UserId { get; set; }
-    public string UserName { get; set; } = string.Empty;
+    public Guid UserId { get; set; }
+    public string UserEmail { get; set; } = string.Empty;
 }
