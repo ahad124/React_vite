@@ -18,11 +18,22 @@ public class Event
     [Required(ErrorMessage = "Date is required")]
     public DateTime Date { get; set; }
 
-    [Required(ErrorMessage = "UserId is required")]
-    [ForeignKey("User")]
-    public Guid UserId { get; set; }
+    [StringLength(300)]
+    public string? Location { get; set; }
 
-    // Navigation property
-    [InverseProperty("Events")]
-    public User? User { get; set; }
+    [Required(ErrorMessage = "CategoryId is required")]
+    public int CategoryId { get; set; }
+
+    [Required(ErrorMessage = "OrganizerId is required")]
+    public Guid OrganizerId { get; set; }
+
+    // Navigation properties
+    [ForeignKey("CategoryId")]
+    public Category? Category { get; set; }
+
+    [ForeignKey("OrganizerId")]
+    public User? Organizer { get; set; }
+
+    public ICollection<EventBooking> Bookings { get; set; } = new List<EventBooking>();
+    public ICollection<EventFavorite> Favorites { get; set; } = new List<EventFavorite>();
 }

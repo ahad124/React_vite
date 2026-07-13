@@ -1,8 +1,7 @@
-using EventBoard.Api.Data;
 using EventBoard.Api.Models;
+using EventBoard.Api.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace EventBoard.Api.Controllers;
 
@@ -10,12 +9,12 @@ namespace EventBoard.Api.Controllers;
 [Route("api/[controller]")]
 public class EventsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IEventRepository _eventRepository;
     private readonly ILogger<EventsController> _logger;
 
-    public EventsController(AppDbContext context, ILogger<EventsController> logger)
+    public EventsController(IEventRepository eventRepository, ILogger<EventsController> logger)
     {
-        _context = context;
+        _eventRepository = eventRepository;
         _logger = logger;
     }
 
@@ -27,11 +26,7 @@ public class EventsController : ControllerBase
     public async Task<ActionResult<IEnumerable<EventDto>>> GetAllEvents()
     {
         _logger.LogInformation("Retrieving all events");
-        var events = await _context.Events
-            .Include(e => e.User)
-            .AsNoTracking()
-            .ToListAsync();
-
+        var events = await _eventRepository.GetAllAsync();
         return Ok(events.Select(e => MapToEventDto(e)));
     }
 
@@ -47,14 +42,10 @@ public class EventsController : ControllerBase
 
         if (id <= 0)
         {
-            _logger.LogWarning("Invalid event ID provided: {EventId}", id);
             return BadRequest("Event ID must be greater than 0");
         }
 
-        var evt = await _context.Events
-            .Include(e => e.User)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Id == id);
+        var evt = await _eventRepository.GetByIdAsync(id);
 
         if (evt == null)
         {
@@ -66,20 +57,14 @@ public class EventsController : ControllerBase
     }
 
     /// <summary>
-    /// Get events by user ID
+    /// Get events by category ID
     /// </summary>
-    [HttpGet("user/{userId}")]
+    [HttpGet("category/{categoryId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<EventDto>>> GetEventsByUserId(Guid userId)
+    public async Task<ActionResult<IEnumerable<EventDto>>> GetEventsByCategoryId(int categoryId)
     {
-        _logger.LogInformation("Retrieving events for user ID: {UserId}", userId);
-
-        var events = await _context.Events
-            .Where(e => e.UserId == userId)
-            .Include(e => e.User)
-            .AsNoTracking()
-            .ToListAsync();
-
+        _logger.LogInformation("Retrieving events for category ID: {CategoryId}", categoryId);
+        var events = await _eventRepository.GetByCategoryIdAsync(categoryId);
         return Ok(events.Select(e => MapToEventDto(e)));
     }
 
@@ -92,29 +77,13 @@ public class EventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<EventDto>> CreateEvent([FromBody] CreateEventRequest request)
     {
         _logger.LogInformation("Creating new event: {Title}", request.Title);
 
         if (!ModelState.IsValid)
         {
-            _logger.LogWarning("Invalid model state for event creation");
             return BadRequest(ModelState);
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Title))
-        {
-            _logger.LogWarning("Event title is empty");
-            return BadRequest("Event title is required");
-        }
-
-        // Verify user exists
-        var userExists = await _context.Users.AnyAsync(u => u.Id == request.UserId);
-        if (!userExists)
-        {
-            _logger.LogWarning("User not found with ID: {UserId}", request.UserId);
-            return NotFound($"User with ID {request.UserId} not found");
         }
 
         var evt = new Event
@@ -122,14 +91,17 @@ public class EventsController : ControllerBase
             Title = request.Title.Trim(),
             Description = request.Description?.Trim(),
             Date = request.Date,
-            UserId = request.UserId
+            Location = request.Location?.Trim(),
+            CategoryId = request.CategoryId,
+            OrganizerId = request.OrganizerId
         };
 
-        _context.Events.Add(evt);
-        await _context.SaveChangesAsync();
+        var created = await _eventRepository.CreateAsync(evt);
+        // Re-fetch to get Category and Organizer names populated
+        var populated = await _eventRepository.GetByIdAsync(created.Id);
 
-        _logger.LogInformation("Event created successfully with ID: {EventId}", evt.Id);
-        return CreatedAtAction(nameof(GetEventById), new { id = evt.Id }, MapToEventDto(evt));
+        _logger.LogInformation("Event created successfully with ID: {EventId}", created.Id);
+        return CreatedAtAction(nameof(GetEventById), new { id = created.Id }, MapToEventDto(populated ?? created));
     }
 
     /// <summary>
@@ -148,17 +120,15 @@ public class EventsController : ControllerBase
 
         if (id <= 0)
         {
-            _logger.LogWarning("Invalid event ID provided: {EventId}", id);
             return BadRequest("Event ID must be greater than 0");
         }
 
         if (!ModelState.IsValid)
         {
-            _logger.LogWarning("Invalid model state for event update");
             return BadRequest(ModelState);
         }
 
-        var evt = await _context.Events.FindAsync(id);
+        var evt = await _eventRepository.GetByIdAsync(id);
 
         if (evt == null)
         {
@@ -169,12 +139,16 @@ public class EventsController : ControllerBase
         evt.Title = request.Title?.Trim() ?? evt.Title;
         evt.Description = request.Description?.Trim() ?? evt.Description;
         evt.Date = request.Date ?? evt.Date;
+        evt.Location = request.Location?.Trim() ?? evt.Location;
+        evt.CategoryId = request.CategoryId ?? evt.CategoryId;
 
-        _context.Events.Update(evt);
-        await _context.SaveChangesAsync();
+        await _eventRepository.UpdateAsync(evt);
+
+        // Re-fetch populated
+        var populated = await _eventRepository.GetByIdAsync(id);
 
         _logger.LogInformation("Event updated successfully with ID: {EventId}", id);
-        return Ok(MapToEventDto(evt));
+        return Ok(MapToEventDto(populated ?? evt));
     }
 
     /// <summary>
@@ -193,21 +167,17 @@ public class EventsController : ControllerBase
 
         if (id <= 0)
         {
-            _logger.LogWarning("Invalid event ID provided: {EventId}", id);
             return BadRequest("Event ID must be greater than 0");
         }
 
-        var evt = await _context.Events.FindAsync(id);
-
+        var evt = await _eventRepository.GetByIdAsync(id);
         if (evt == null)
         {
             _logger.LogWarning("Event not found with ID: {EventId}", id);
             return NotFound($"Event with ID {id} not found");
         }
 
-        _context.Events.Remove(evt);
-        await _context.SaveChangesAsync();
-
+        await _eventRepository.DeleteAsync(id);
         _logger.LogInformation("Event deleted successfully with ID: {EventId}", id);
         return NoContent();
     }
@@ -220,8 +190,11 @@ public class EventsController : ControllerBase
             Title = evt.Title,
             Description = evt.Description,
             Date = evt.Date,
-            UserId = evt.UserId,
-            UserEmail = evt.User?.Email ?? "Unknown"
+            Location = evt.Location,
+            CategoryId = evt.CategoryId,
+            CategoryName = evt.Category?.Name ?? "Unknown Category",
+            OrganizerId = evt.OrganizerId,
+            OrganizerEmail = evt.Organizer?.Email ?? "Unknown"
         };
     }
 }
@@ -234,7 +207,9 @@ public class CreateEventRequest
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime Date { get; set; }
-    public Guid UserId { get; set; }
+    public string? Location { get; set; }
+    public int CategoryId { get; set; }
+    public Guid OrganizerId { get; set; }
 }
 
 /// <summary>
@@ -245,6 +220,8 @@ public class UpdateEventRequest
     public string? Title { get; set; }
     public string? Description { get; set; }
     public DateTime? Date { get; set; }
+    public string? Location { get; set; }
+    public int? CategoryId { get; set; }
 }
 
 /// <summary>
@@ -256,6 +233,9 @@ public class EventDto
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public DateTime Date { get; set; }
-    public Guid UserId { get; set; }
-    public string UserEmail { get; set; } = string.Empty;
+    public string? Location { get; set; }
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public Guid OrganizerId { get; set; }
+    public string OrganizerEmail { get; set; } = string.Empty;
 }

@@ -17,6 +17,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // Add Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IEventRepository, EventRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 
 // Add Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -79,11 +82,11 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Apply migrations on startup (optional - for development)
+// Seed database on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    DbInitializer.Seed(db);
 }
 
 app.Run();

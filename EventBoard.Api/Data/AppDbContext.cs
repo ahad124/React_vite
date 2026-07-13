@@ -11,6 +11,9 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<Event> Events { get; set; } = null!;
+    public DbSet<Category> Categories { get; set; } = null!;
+    public DbSet<EventBooking> Bookings { get; set; } = null!;
+    public DbSet<EventFavorite> Favorites { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -23,15 +26,73 @@ public class AppDbContext : DbContext
             entity.HasIndex(u => u.Email).IsUnique();
         });
 
-        // Configure the one-to-many relationship between User and Event
-        modelBuilder.Entity<Event>()
-            .HasOne(e => e.User)
-            .WithMany(u => u.Events)
-            .HasForeignKey(e => e.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // Configure Category entity
+        modelBuilder.Entity<Category>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.HasIndex(c => c.Name).IsUnique();
+        });
 
-        modelBuilder.Entity<Event>()
-            .Property(e => e.Date)
-            .HasColumnType("datetime2");
+        // Configure Event entity
+        modelBuilder.Entity<Event>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Date);
+            entity.HasIndex(e => e.CategoryId);
+
+            // One-to-many relationship: User (Organizer) to Event
+            entity.HasOne(e => e.Organizer)
+                .WithMany(u => u.OrganizedEvents)
+                .HasForeignKey(e => e.OrganizerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // One-to-many relationship: Category to Event
+            entity.HasOne(e => e.Category)
+                .WithMany(c => c.Events)
+                .HasForeignKey(e => e.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent category deletion if events exist
+        });
+
+        // Configure EventBooking entity
+        modelBuilder.Entity<EventBooking>(entity =>
+        {
+            entity.HasKey(eb => eb.Id);
+            entity.HasIndex(eb => eb.EventId);
+            entity.HasIndex(eb => eb.UserId);
+
+            // Save enum as string
+            entity.Property(eb => eb.Status)
+                .HasConversion<string>();
+
+            // Relationships
+            entity.HasOne(eb => eb.Event)
+                .WithMany(e => e.Bookings)
+                .HasForeignKey(eb => eb.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(eb => eb.User)
+                .WithMany(u => u.Bookings)
+                .HasForeignKey(eb => eb.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure EventFavorite (Composite Primary Key / Join Table)
+        modelBuilder.Entity<EventFavorite>(entity =>
+        {
+            entity.HasKey(ef => new { ef.UserId, ef.EventId });
+            entity.HasIndex(ef => ef.UserId);
+            entity.HasIndex(ef => ef.EventId);
+
+            // Relationships
+            entity.HasOne(ef => ef.User)
+                .WithMany(u => u.Favorites)
+                .HasForeignKey(ef => ef.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ef => ef.Event)
+                .WithMany(e => e.Favorites)
+                .HasForeignKey(ef => ef.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

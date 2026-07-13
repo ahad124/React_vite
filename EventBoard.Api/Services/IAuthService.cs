@@ -8,7 +8,7 @@ public interface IAuthService
     /// Registers a new user. Returns the user's ID if successful.
     /// Throws InvalidOperationException if the email is already taken.
     /// </summary>
-    Task<Guid> RegisterAsync(string email, string password);
+    Task<Guid> RegisterAsync(string userName, string email, string password, string role = "User");
 
     /// <summary>
     /// Authenticates a user and returns a JWT token with expiry.

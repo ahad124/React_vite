@@ -19,8 +19,11 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
-    public async Task<Guid> RegisterAsync(string email, string password)
+    public async Task<Guid> RegisterAsync(string userName, string email, string password, string role = "User")
     {
+        userName = userName.Trim();
+        email = email.Trim().ToLowerInvariant();
+
         // Check if email already exists
         if (await _userRepository.UserExistsAsync(email))
         {
@@ -28,21 +31,29 @@ public class AuthService : IAuthService
             throw new InvalidOperationException($"A user with email '{email}' already exists.");
         }
 
+        // Validate role
+        var allowedRoles = new[] { "User", "Admin" };
+        if (!allowedRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
+        {
+            role = "User"; // Fallback to User if invalid role provided
+        }
+
         // Hash the password with BCrypt
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
-        // Create a new user with default role "User"
+        // Create a new user with the selected role
         var user = new User
         {
             Id = Guid.NewGuid(),
+            UserName = userName,
             Email = email,
             PasswordHash = passwordHash,
-            Role = "User"
+            Role = role
         };
 
         await _userRepository.AddUserAsync(user);
 
-        _logger.LogInformation("User registered successfully with ID: {UserId}", user.Id);
+        _logger.LogInformation("User registered successfully with ID: {UserId}, Role: {Role}", user.Id, role);
         return user.Id;
     }
 
@@ -70,9 +81,11 @@ public class AuthService : IAuthService
         _logger.LogInformation("User logged in successfully: {UserId}", user.Id);
 
         return new AuthResponseDto
-        {
-            Token = token,
-            ExpiresAt = expiresAt
-        };
+{
+    Token = token,
+    ExpiresAt = expiresAt,
+    Role = user.Role,
+    UserName = user.UserName
+};
     }
 }

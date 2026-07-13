@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -8,24 +9,96 @@ const EventDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchEventDetail = async () => {
-      try {
-        setLoading(true);
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-        const response = await axios.get(`${baseUrl}/events/${id}`);
-        setEvent(response.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching event details:', err);
-        setError('Failed to fetch event details. Please verify the event exists and try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Booking & Favorite state
+  const [bookingStatus, setBookingStatus] = useState(null); // 'Pending', 'Confirmed', 'Cancelled' or null
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
+  const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+
+  const fetchEventDetail = async () => {
+    try {
+      setLoading(true);
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+      const response = await axios.get(`${baseUrl}/events/${id}`);
+      setEvent(response.data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching event details:', err);
+      setError('Failed to fetch event details. Please verify the event exists and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkUserRelations = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+
+      // 1. Check favorites
+      const favRes = await axios.get(`${baseUrl}/favorites`);
+      const isFav = favRes.data.some((fav) => fav.eventId === parseInt(id));
+      setIsFavorited(isFav);
+
+      // 2. Check bookings
+      const bookRes = await axios.get(`${baseUrl}/bookings/my`);
+      const existingBooking = bookRes.data.find((b) => b.eventId === parseInt(id));
+      if (existingBooking) {
+        setBookingStatus(existingBooking.status);
+      } else {
+        setBookingStatus(null);
+      }
+    } catch (err) {
+      console.error('Error checking user event status:', err);
+    }
+  };
+
+  useEffect(() => {
     fetchEventDetail();
   }, [id]);
+
+  useEffect(() => {
+    checkUserRelations();
+  }, [id, isAuthenticated]);
+
+  const handleRegisterEvent = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+      const res = await axios.post(`${baseUrl}/bookings`, { eventId: parseInt(id) });
+      setBookingStatus(res.data.status);
+    } catch (err) {
+      console.error('Failed to book event:', err);
+      alert(err.response?.data || 'Failed to register for event.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+      const res = await axios.post(`${baseUrl}/favorites/${parseInt(id)}`);
+      setIsFavorited(res.data.isFavorite);
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -70,9 +143,31 @@ const EventDetail = () => {
         {/* Banner area with a gradient */}
         <div className="bg-gradient-primary-dark text-white p-5 position-relative">
           <div className="position-relative z-1">
-            <span className="badge rounded-pill bg-white text-primary px-3 py-2 fw-semibold mb-3">
-              {event.category || 'General'}
-            </span>
+            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <span className="badge rounded-pill bg-white text-primary px-3 py-2 fw-semibold">
+                {event.categoryName || 'General'}
+              </span>
+
+              {/* Favorite Button */}
+              <button
+                onClick={handleToggleFavorite}
+                disabled={actionLoading}
+                className="btn btn-dark bg-opacity-25 rounded-circle p-2 d-flex align-items-center justify-content-center border-0 text-white"
+                style={{ width: '40px', height: '40px' }}
+                title={isFavorited ? "Remove from Favorites" : "Add to Favorites"}
+              >
+                {isFavorited ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="red" className="bi bi-heart-fill" viewBox="0 0 16 16">
+                    <path fillRule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314"/>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" className="bi bi-heart" viewBox="0 0 16 16">
+                    <path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15"/>
+                  </svg>
+                )}
+              </button>
+            </div>
+            
             <h1 className="fw-bold display-4 mb-3">{event.title}</h1>
             <div className="d-flex flex-wrap gap-4 text-white-50">
               <span className="d-flex align-items-center">
@@ -93,7 +188,7 @@ const EventDetail = () => {
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-geo-alt-fill me-2 text-white" viewBox="0 0 16 16">
                   <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6"/>
                 </svg>
-                {event.location}
+                {event.location || 'Online'}
               </span>
             </div>
           </div>
@@ -107,23 +202,6 @@ const EventDetail = () => {
               <p className="lead text-muted fs-5 lh-base mb-4" style={{ whiteSpace: 'pre-line' }}>
                 {event.description}
               </p>
-              
-              {event.agenda && (
-                <div className="mt-5">
-                  <h3 className="h5 fw-bold mb-3">Agenda</h3>
-                  <div className="list-group list-group-flush border-top border-bottom">
-                    {event.agenda.map((item, idx) => (
-                      <div key={idx} className="list-group-item py-3 px-0 d-flex gap-3">
-                        <span className="text-primary fw-bold min-w-100">{item.time}</span>
-                        <div>
-                          <h6 className="mb-1 fw-bold">{item.topic}</h6>
-                          <p className="text-muted small mb-0">{item.speaker}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="col-lg-4">
@@ -133,48 +211,48 @@ const EventDetail = () => {
                 <ul className="list-unstyled mb-4">
                   <li className="mb-3 d-flex align-items-start gap-3">
                     <span className="p-2 rounded bg-primary-soft text-primary d-inline-flex">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-person-fill" viewBox="0 0 16 16">
-                        <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-envelope-fill" viewBox="0 0 16 16">
+                        <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414zM0 4.697v7.104l5.803-3.558zM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586zm3.436-.586L16 11.801V4.697z"/>
                       </svg>
                     </span>
                     <div>
-                      <small className="text-muted d-block">Organized By</small>
-                      <strong className="text-dark">{event.organizer || 'Event Committee'}</strong>
+                      <small className="text-muted d-block">Organizer Email</small>
+                      <strong className="text-dark">{event.organizerEmail || 'Unknown'}</strong>
                     </div>
                   </li>
 
-                  {event.capacity && (
-                    <li className="mb-3 d-flex align-items-start gap-3">
-                      <span className="p-2 rounded bg-primary-soft text-primary d-inline-flex">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-people-fill" viewBox="0 0 16 16">
-                          <path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.24 2.24 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.3 6.3 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>
-                        </svg>
-                      </span>
-                      <div>
-                        <small className="text-muted d-block">Capacity</small>
-                        <strong className="text-dark">{event.capacity} seats</strong>
-                      </div>
-                    </li>
-                  )}
-
-                  {event.price !== undefined && (
-                    <li className="mb-3 d-flex align-items-start gap-3">
-                      <span className="p-2 rounded bg-primary-soft text-primary d-inline-flex">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-tag-fill" viewBox="0 0 16 16">
-                          <path d="M2 1a1 1 0 0 0-1 1v4.586a1 1 0 0 0 .293.707l7 7a1 1 0 0 0 1.414 0l4.586-4.586a1 1 0 0 0 0-1.414l-7-7A1 1 0 0 0 6.586 1zm4 3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
-                        </svg>
-                      </span>
-                      <div>
-                        <small className="text-muted d-block">Admission Price</small>
-                        <strong className="text-dark">{event.price === 0 || event.price === 'Free' ? 'Free' : `$${event.price}`}</strong>
-                      </div>
-                    </li>
-                  )}
+                  <li className="mb-3 d-flex align-items-start gap-3">
+                    <span className="p-2 rounded bg-primary-soft text-primary d-inline-flex">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-tag-fill" viewBox="0 0 16 16">
+                        <path d="M2 1a1 1 0 0 0-1 1v4.586a1 1 0 0 0 .293.707l7 7a1 1 0 0 0 1.414 0l4.586-4.586a1 1 0 0 0 0-1.414l-7-7A1 1 0 0 0 6.586 1zm4 3.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
+                      </svg>
+                    </span>
+                    <div>
+                      <small className="text-muted d-block">Category</small>
+                      <strong className="text-dark">{event.categoryName || 'General'}</strong>
+                    </div>
+                  </li>
                 </ul>
 
-                <button className="btn btn-primary w-100 rounded-pill py-2.5 fw-semibold btn-hover-scale shadow-sm">
-                  Register for Event
-                </button>
+                {/* Booking Action section */}
+                {bookingStatus ? (
+                  <div className={`alert p-3 rounded-3 text-center mb-0 fw-semibold ${
+                    bookingStatus === 'Confirmed' ? 'alert-success text-success' : bookingStatus === 'Cancelled' ? 'alert-danger text-danger' : 'alert-warning text-dark'
+                  }`}>
+                    Booking Status: {bookingStatus}
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleRegisterEvent}
+                    disabled={actionLoading}
+                    className="btn btn-primary w-100 rounded-pill py-2.5 fw-semibold btn-hover-scale shadow-sm"
+                  >
+                    {actionLoading && (
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    )}
+                    {isAuthenticated ? 'Register for Event' : 'Sign In to Register'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -35,7 +35,9 @@ public class AuthController : ControllerBase
 
         try
         {
-            var userId = await _authService.RegisterAsync(request.Email, request.Password);
+            _logger.LogInformation("Requested role: {Role}", request.Role);
+
+            var userId = await _authService.RegisterAsync(request.UserName, request.Email, request.Password, request.Role);
             _logger.LogInformation("User registered successfully: {UserId}", userId);
             return Ok(new { UserId = userId, Message = "Registration successful" });
         }
@@ -80,6 +82,10 @@ public class AuthController : ControllerBase
 /// </summary>
 public class RegisterRequest
 {
+    [Required(ErrorMessage = "UserName is required")]
+    [StringLength(100, MinimumLength = 2, ErrorMessage = "UserName must be between 2 and 100 characters")]
+    public string UserName { get; set; } = string.Empty;
+
     [Required(ErrorMessage = "Email is required")]
     [EmailAddress(ErrorMessage = "Invalid email address")]
     public string Email { get; set; } = string.Empty;
@@ -87,6 +93,9 @@ public class RegisterRequest
     [Required(ErrorMessage = "Password is required")]
     [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
     public string Password { get; set; } = string.Empty;
+
+    [StringLength(50)]
+    public string Role { get; set; } = "User";
 }
 
 /// <summary>
