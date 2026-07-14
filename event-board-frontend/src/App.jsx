@@ -36,7 +36,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 // Navbar Component with authentication logic
 const NavigationBar = () => {
   const { isAuthenticated, user, logout } = useAuth();
-  console.log(user); // Add this line
+  const location = useLocation();
+  const isAdmin = user?.role === 'Admin';
+  const onLoginPage = location.pathname === '/login';
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark-glass sticky-top shadow-sm py-3">
@@ -60,15 +62,21 @@ const NavigationBar = () => {
         </button>
         <div className="collapse navbar-collapse justify-content-end" id="navbarNav">
           <ul className="navbar-nav gap-2 align-items-center">
-            <li className="nav-item">
-              <Link to="/" className="nav-link px-3 rounded-pill">Events</Link>
-            </li>
+            {/* Events browsing isn't relevant on the login page */}
+            {!onLoginPage && (
+              <li className="nav-item">
+                <Link to="/" className="nav-link px-3 rounded-pill">Events</Link>
+              </li>
+            )}
             {isAuthenticated && (
               <>
-                <li className="nav-item">
-                  <Link to="/dashboard" className="nav-link px-3 rounded-pill">My Bookings</Link>
-                </li>
-                {user?.role === 'Admin' && (
+                {/* Admins moderate all bookings in the Admin Panel, so a personal "My Bookings" doesn't apply */}
+                {!isAdmin && (
+                  <li className="nav-item">
+                    <Link to="/dashboard" className="nav-link px-3 rounded-pill">My Bookings</Link>
+                  </li>
+                )}
+                {isAdmin && (
                   <li className="nav-item">
                     <Link to="/admin" className="nav-link px-3 rounded-pill text-warning fw-semibold">Admin Panel</Link>
                   </li>
