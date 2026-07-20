@@ -1,0 +1,22 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+# Test / coverage output
+TestResults/
+CoverageReport*/
+*.trx
+*.coverage
+coverage*.xml
+coverage*.json
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.user
+*.suo
+
+# OS
+.DS_Store

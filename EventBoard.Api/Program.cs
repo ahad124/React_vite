@@ -26,6 +26,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IEventRepository, EventRepository>();
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
+builder.Services.AddScoped<IEventService, EventService>();
 
 // Add Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -113,3 +114,4 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+public partial class Program { }

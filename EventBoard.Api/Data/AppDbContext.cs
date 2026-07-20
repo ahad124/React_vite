@@ -15,6 +15,9 @@ public class AppDbContext : DbContext
     public DbSet<EventBooking> Bookings { get; set; } = null!;
     public DbSet<EventFavorite> Favorites { get; set; } = null!;
 
+    // Keyless projection for the raw-SQL events report (no backing table).
+    public DbSet<EventReportRow> EventReport { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -93,6 +96,14 @@ public class AppDbContext : DbContext
                 .WithMany(e => e.Favorites)
                 .HasForeignKey(ef => ef.EventId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Keyless entity: materialized only from raw SQL, never mapped to a table.
+        // ToView(null) keeps EnsureCreated/migrations from generating a table for it.
+        modelBuilder.Entity<EventReportRow>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView(null);
         });
     }
 }
