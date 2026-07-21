@@ -1,0 +1,59 @@
+Summary
+  Generated on: 21/07/2026 - 10:10:45 AM
+  Coverage date: 21/07/2026 - 10:10:16 AM
+  Parser: Cobertura
+  Assemblies: 1
+  Classes: 37
+  Files: 26
+  Line coverage: 92.2%
+  Covered lines: 1107
+  Uncovered lines: 93
+  Coverable lines: 1200
+  Total lines: 2175
+  Branch coverage: 58.8% (180 of 306)
+  Covered branches: 180
+  Total branches: 306
+  Method coverage: 98.9% (186 of 188)
+  Full method coverage: 88.8% (167 of 188)
+  Covered methods: 186
+  Fully covered methods: 167
+  Total methods: 188
+
+EventBoard.Api                                            92.2%
+  EventBoard.Api.Controllers.AuthController               87.5%
+  EventBoard.Api.Controllers.BookingDto                    100%
+  EventBoard.Api.Controllers.BookingsController           90.8%
+  EventBoard.Api.Controllers.CategoriesController           90%
+  EventBoard.Api.Controllers.CategoryDto                   100%
+  EventBoard.Api.Controllers.CreateBookingRequest          100%
+  EventBoard.Api.Controllers.CreateCategoryRequest         100%
+  EventBoard.Api.Controllers.CreateEventRequest            100%
+  EventBoard.Api.Controllers.EventDto                      100%
+  EventBoard.Api.Controllers.EventsController             86.1%
+  EventBoard.Api.Controllers.FavoriteDto                   100%
+  EventBoard.Api.Controllers.FavoritesController          90.6%
+  EventBoard.Api.Controllers.LoginRequest                  100%
+  EventBoard.Api.Controllers.RegisterRequest               100%
+  EventBoard.Api.Controllers.ReportsController             100%
+  EventBoard.Api.Controllers.UpdateBookingStatusRequest    100%
+  EventBoard.Api.Controllers.UpdateEventRequest            100%
+  EventBoard.Api.Controllers.WeatherController              92%
+  EventBoard.Api.Data.AppDbContext                         100%
+  EventBoard.Api.Data.DbInitializer                        100%
+  EventBoard.Api.Models.AuthResponseDto                    100%
+  EventBoard.Api.Models.Category                           100%
+  EventBoard.Api.Models.Event                              100%
+  EventBoard.Api.Models.EventBooking                       100%
+  EventBoard.Api.Models.EventFavorite                       80%
+  EventBoard.Api.Models.EventReportRow                     100%
+  EventBoard.Api.Models.User                               100%
+  EventBoard.Api.Models.WeatherDto                         100%
+  EventBoard.Api.Repositories.BookingRepository            100%
+  EventBoard.Api.Repositories.EventRepository               84%
+  EventBoard.Api.Repositories.FavoriteRepository           100%
+  EventBoard.Api.Repositories.UserRepository               100%
+  EventBoard.Api.Services.AuthService                     94.4%
+  EventBoard.Api.Services.EventService                     100%
+  EventBoard.Api.Services.JwtTokenService                  100%
+  EventBoard.Api.Services.WeatherService                  41.1%
+  Program                                                 94.3%
