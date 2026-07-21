@@ -35,9 +35,11 @@ public class AuthController : ControllerBase
 
         try
         {
-            _logger.LogInformation("Requested role: {Role}", request.Role);
-
-            var userId = await _authService.RegisterAsync(request.UserName, request.Email, request.Password, request.Role);
+            // SECURITY: Never trust a client-supplied role. Public self-registration
+            // always creates a plain "User". Elevating an account to "Admin" is an
+            // administrative action (seeding / an admin-only endpoint), never something
+            // a caller can request for themselves.
+            var userId = await _authService.RegisterAsync(request.UserName, request.Email, request.Password, "User");
             _logger.LogInformation("User registered successfully: {UserId}", userId);
             return Ok(new { UserId = userId, Message = "Registration successful" });
         }
@@ -94,8 +96,8 @@ public class RegisterRequest
     [StringLength(100, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
     public string Password { get; set; } = string.Empty;
 
-    [StringLength(50)]
-    public string Role { get; set; } = "User";
+    // NOTE: Role is intentionally NOT part of the registration request.
+    // Self-service callers must not be able to choose their own role. See Register().
 }
 
 /// <summary>

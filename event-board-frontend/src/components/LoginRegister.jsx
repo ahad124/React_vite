@@ -8,7 +8,6 @@ const LoginRegister = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState('User');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,14 +68,13 @@ const LoginRegister = () => {
       }
 
       try {
-        await register(username, email, password, role);
-        setSuccess(`Registration successful as ${role}! You can now log in.`);
+        await register(username, email, password);
+        setSuccess('Registration successful! You can now log in.');
         setIsLogin(true);
         // Clean fields
         setUsername('');
         setPassword('');
         setConfirmPassword('');
-        setRole('User');
       } catch (err) {
         console.error(err);
         const backendErrorMsg = err.response?.data?.message || err.response?.data?.Message || (typeof err.response?.data === 'string' ? err.response.data : null);
@@ -197,22 +195,6 @@ const LoginRegister = () => {
                       required
                     />
                     <label htmlFor="confirmPasswordInput">Confirm Password</label>
-                  </div>
-                )}
-
-                {!isLogin && (
-                  <div className="form-floating mb-4">
-                    <select
-                      className="form-select rounded-3"
-                      id="roleInput"
-                      value={role}
-                      onChange={(e) => setRole(e.target.value)}
-                      required
-                    >
-                      <option value="User">User</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                    <label htmlFor="roleInput">Register As</label>
                   </div>
                 )}
 

@@ -68,9 +68,11 @@ export const AuthProvider = ({ children }) => {
     return { ...response.data, role };
   };
 
-  const register = async (userName, email, password, role = "User") => {
+  // Role is deliberately not sent: the API always registers a plain "User".
+  // Admin accounts are provisioned server-side, never chosen by the caller.
+  const register = async (userName, email, password) => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
-    const response = await axios.post(`${baseUrl}/auth/register`, { userName, email, password, role });
+    const response = await axios.post(`${baseUrl}/auth/register`, { userName, email, password });
     return response.data;
   };
 

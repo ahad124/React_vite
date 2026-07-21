@@ -32,6 +32,29 @@ info: Microsoft.Hosting.Lifetime[14]
       Now listening on: http://localhost:5000
 ```
 
+### 1a. Configure the Weather API key (required for weather to work)
+
+Event pages show current weather via [OpenWeatherMap](https://openweathermap.org/api).
+Out of the box `OpenWeather:ApiKey` in `appsettings.json` is **empty**, so weather will
+always render as *"Weather information is currently unavailable."* — this is the app
+degrading gracefully, not a crash. To make weather work, supply your own free API key.
+
+**Do not commit your key.** Use .NET user-secrets or an environment variable:
+
+```bash
+cd /Users/mac/React_vite/EventBoard.Api
+
+# Option A — user secrets (recommended for local dev)
+dotnet user-secrets init
+dotnet user-secrets set "OpenWeather:ApiKey" "<your-openweather-key>"
+
+# Option B — environment variable
+export OpenWeather__ApiKey="<your-openweather-key>"   # note the double underscore
+```
+
+Restart the API after setting the key. If the key is missing, the logs show:
+`OpenWeather:ApiKey is not configured; weather is unavailable.`
+
 ### 2. Create Test Data (Optional)
 
 In a new terminal, create a test user:
@@ -168,6 +191,11 @@ Navigate to: **http://localhost:5173**
 - ✅ Check port 5000 is available
 - ✅ Delete `EventBoard.db` and restart to reset database
 - ✅ Run `dotnet restore` if packages are missing
+
+### Weather always shows "unavailable"
+- ✅ `OpenWeather:ApiKey` is empty by default — set it (see step 1a)
+- ✅ Check the logs for `OpenWeather:ApiKey is not configured`
+- ✅ Verify the event's `Location` has a recognizable city before the first comma
 
 ### Port already in use
 ```bash

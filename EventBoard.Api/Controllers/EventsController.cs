@@ -229,6 +229,28 @@ public class EventsController : ControllerBase
             return BadRequest("Unsupported content type. Please upload a valid image.");
         }
 
+        // Deep check: the extension and Content-Type above are BOTH supplied by the
+        // client and can be forged (a malicious file renamed to photo.jpg with a
+        // spoofed Content-Type will pass them). So we also read the first bytes of the
+        // actual file content and verify they match a known image "magic number".
+        await using (var inspectStream = file.OpenReadStream())
+        {
+            if (!await HasValidImageSignatureAsync(inspectStream, extension))
+            {
+                _logger.LogWarning(
+                    "Rejected upload: byte signature did not match declared type. FileName={FileName}, ContentType={ContentType}",
+                    file.FileName, file.ContentType);
+                return BadRequest("File content does not match a supported image format.");
+            }
+        }
+
+        // SECURITY TODO: Byte-signature validation confirms the file *starts* like an
+        // image, but it does not prove the file is safe (a valid image can still carry
+        // an embedded exploit or polyglot payload). Before persisting, pass the stream
+        // to a real anti-virus / malware scanner (e.g. ClamAV via clamd, Windows
+        // Defender AMSI, or a cloud scanning API) and reject anything it flags.
+        // Uploads should also be served from a separate, non-executable static host.
+
         // wwwroot may not exist yet in a fresh checkout; ensure the uploads folder exists.
         var webRoot = _environment.WebRootPath
                       ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
@@ -247,6 +269,39 @@ public class EventsController : ControllerBase
         var relativeUrl = $"/uploads/{safeFileName}";
         _logger.LogInformation("Image uploaded: {ImageUrl}", relativeUrl);
         return Ok(new { imageUrl = relativeUrl });
+    }
+
+    /// <summary>
+    /// Reads the leading bytes of the uploaded stream and confirms they match a known
+    /// image file signature (magic bytes) consistent with the declared extension.
+    /// This is the check that cannot be spoofed by simply renaming a file, because it
+    /// looks at the real content rather than the client-supplied name / Content-Type.
+    /// </summary>
+    private static async Task<bool> HasValidImageSignatureAsync(Stream stream, string extension)
+    {
+        // Need at least 12 bytes to cover the WEBP (RIFF....WEBP) header.
+        var header = new byte[12];
+        var read = await stream.ReadAsync(header.AsMemory(0, header.Length));
+        if (read < 12)
+        {
+            return false;
+        }
+
+        bool StartsWith(params byte[] sig) => header.Take(sig.Length).SequenceEqual(sig);
+
+        return extension.ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => StartsWith(0xFF, 0xD8, 0xFF),
+            ".png" => StartsWith(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A),
+            // "GIF87a" or "GIF89a"
+            ".gif" => StartsWith(0x47, 0x49, 0x46, 0x38, 0x37, 0x61)
+                      || StartsWith(0x47, 0x49, 0x46, 0x38, 0x39, 0x61),
+            // "RIFF" .... "WEBP" — bytes 0-3 = RIFF, bytes 8-11 = WEBP
+            ".webp" => StartsWith(0x52, 0x49, 0x46, 0x46)
+                       && header[8] == 0x57 && header[9] == 0x45
+                       && header[10] == 0x42 && header[11] == 0x50,
+            _ => false
+        };
     }
 
     private static EventDto MapToEventDto(Event evt)
